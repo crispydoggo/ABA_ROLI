@@ -1,0 +1,945 @@
+---
+title: "MEL Assistant Tasks"
+author: 'Lothar Mateo'
+date: "`r  Sys.Date() `"
+format: 
+  html:
+    toc: true
+    code-fold: true
+execute: 
+  warning: false
+---
+
+
+```{r set_up}
+#| message: false
+#| include: false
+
+library(tidyverse)
+library(googlesheets4)
+library(writexl)
+
+```
+
+# Introduction
+
+# Course Level Data Cleaning
+
+```{r data_import}
+
+# Import the official Universities' names
+uni_list <- googlesheets4::read_sheet("1ijipRkGUpuijXzqwZgzEE7x-BFNA7ZpezArofZijl6Y")
+
+# Import de course participants data from Objective 2, Activity 1, 2 and 4
+o1_litigation <- googlesheets4::read_sheet("1JS9sMImsNIiF82iMIOM6yUM2WGxwGy7hul-NxDAhbJc")
+o1_teacher <- googlesheets4::read_sheet("1dfS58RkcFLVBFdQRNurCuaPQAFbwREtBo5KbQZmsSXY")
+
+
+# Import de course participants data from Objective 2, Activity 1, 2 and 4
+o2_a1 <- googlesheets4::read_sheet("1cFPiLyCP_tLQ8cn8mAUsLjokeVHYFieWN4OT_7QJ_jE")
+o2_a2 <- googlesheets4::read_sheet("1chwoe399-qFgz-UneA2fGoVTv5sEJycKuIfCLzWu6Us")
+o2_a4 <- googlesheets4::read_sheet("1NFfhQoeSmNPUJxxQIahgxHinPKRTZ5LF-kk5HiBXjpw")
+
+```
+
+## Objective 1. Cleaning
+
+First we clean the objective 1
+
+```{r objective_1}
+
+# Quality Check Function of Criteria
+  quality_check <- function(data,num_c = c(3,5)){
+    
+  if (num_c == 3){
+    c_assist <- 2
+  } else {
+    c_assist <- 3
+  }
+    
+  data <- data |>
+  # All CURP to upper case
+  mutate( CURP = toupper(CURP) ) |>
+  rowwise() |>
+  mutate(
+    # Right assistance criteria
+    `Cumple requisito de asistencia` = ifelse(
+      sum( c_across(`Asistencia D1`:`Asistencia D5`), na.rm = TRUE ) >= c_assist,
+      1, # If they had 80% > of assistance 
+      0 # If they had 80% < of assistance
+    ),
+    # Received Certification
+    Certificación = ifelse(
+      sum( c_across(`Cumple requisito de asistencia`:`Encuesta de satisfacción`), na.rm = TRUE) == 4,
+      1, # Certified if all the requirements
+      0 # Missed at least one requirement
+    )
+  ) |>
+  ungroup()
+  
+  return(data)
+}
+
+# Quality check in objective 1
+  o1_litigation <- quality_check(o1_litigation, 5)
+  o1_teacher <- quality_check(o1_teacher, 3)
+  
+# University names verification
+  
+  
+  # Initial Hearing Litigation
+  o1_litigation <- o1_litigation |>
+    mutate(
+      
+      # Anáhuac Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Anahuac Oaxaca") | str_detect(`Universidad primaria`, "ANÁHUAC OAXACA"),
+        "Universidad Anáhuac Oaxaca",
+        `Universidad primaria`),
+      # Barra de abogados
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Facultad de derecho de la Barra Nacional de Abogados"),
+        "Facultad de Derecho de la Barra Nacional de Abogados",
+        `Universidad primaria`),
+      # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana"),
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      # Jose Vasconcelos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad José vasconcelos de oaxaca"),
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Universidad de León tiene ~ 10 campus en Gto
+      
+      # Universidad Quetzalcoatl (Irapuato y Moroleón)
+      
+      # Universidad Marista (Querétaro y CDMX)
+      
+      # Universidad San Luis Potosí
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad autónoma de San Luis Potosí"),
+        "Universidad Autónoma de San Luis Potosí",
+        `Universidad primaria`),
+      
+      # Universidad del Sureste != Universidad regional del sureste
+      
+       # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`)
+  
+    )
+  
+  
+  typos_id = c(144637, 146877)
+  
+  new_o1 <- o1_litigation |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`) 
+  
+  
+  # Formador de Formadores
+  
+  o1_teacher <- o1_teacher |>
+    mutate(
+      # Universidad Autónoma de Chihuahua
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "UNIVERSIDAD AUTONOMA DE CHIHUAHUA"),
+        "Universidad Autónoma de Chihuahua",
+        `Universidad primaria`),
+      
+       # Universidad Autónoma de León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma de Nuevo León"),
+        "Universidad Autónoma de Nuevo Leon",
+        `Universidad primaria`),
+      
+      # Universidad de Occidente != Alicia de Occidente
+      
+      # Centro Universitario Aztlan tiene varias cedes
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana"),
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+      # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      
+      # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`)
+      
+    )
+  
+  typos_id <- c(typos_id, 144629)
+  
+  new_o1 <- o1_teacher |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`) |>
+    rbind(new_o1)
+  
+  new_o1 <- unique(new_o1)
+
+```
+
+## Objective 2. Cleaning
+
+### Activity 1
+
+We start with Activuty 1
+
+```{r objective_2.A1}
+
+# Quality check in objective 2
+  o2_a1 <- quality_check(o2_a1, 5)
+  o2_a2 <- quality_check(o2_a2, 5)
+  o2_a4 <- quality_check(o2_a1, 3)
+
+  
+# University names verification
+  
+  # Activity 2.1
+  o2_a1 <- o2_a1 |>
+    mutate(
+      
+      # Universidad Michoacana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Michoacana de San Nicolas de Hidalgo"),
+        "Universidad Michoacana de San Nicolás de Hidalgo",
+        `Universidad primaria`),
+      
+      # Universidad de Chiapas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Autonoma de Chiapas") | str_detect(`Universidad primaria`, "autónoma de Chiapas"),
+        "Universidad Autónoma de Chiapas",
+        `Universidad primaria`),
+      
+      # Centro Carbonelle
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Carbonell"),
+        "Centro de Estudios Jurídicos Carbonell",
+        `Universidad primaria`),
+      
+      # Universidad de Coahuila
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Coahuila"),
+        "Universidad Autónoma de Coahuila",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma del Noreste
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad autónoma del noreste"),
+        "Universidad Autónoma del Noreste",
+        `Universidad primaria`),
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana") | str_detect(`Universidad primaria`, "Universidad autónoma metropolitana") ,
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+      # UVM Universidad del Valle de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad del valle de México"),
+        "Universidad del Valle de México",
+        `Universidad primaria`),
+      
+      # Barra de abogados
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Barra Nacional de Abogados"),
+        "Facultad de Derecho de la Barra Nacional de Abogados",
+        `Universidad primaria`),
+      
+       # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Rosario castellanos") | str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      
+      # Universidad Latinoamericana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Tecnológica Latinoamericana en Línea"),
+        "Universidad Tecnológica Latinoamericana",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Superiroes Gto
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Superiores de Guanajuato"),
+        "Centro de Estudios de Nivel Medio y Superior de Guanajuato",
+        `Universidad primaria`),
+      
+      # UG
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "UNIVERSIDAD DE GUANAJUATO"),
+        "Universidad de Guanajuato",
+        `Universidad primaria`),
+      
+       # Universidad Interamericana para el Desarrollo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Interamericana para el desarrollo") | str_detect(`Universidad primaria`, "UNID,"),
+        "Universidad Interamericana para el Desarrollo",
+        `Universidad primaria`),
+      
+       # Universidad Iberomexicana Hidalgo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ibero Mexicana de Hidalgo."),
+        "Universidad Iberomexicana de Hidalgo",
+        `Universidad primaria`),
+      
+      # Centro Universitario Hidalguense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "centro Universitario Hidalguense"),
+        "Centro Universitario Hidalguense",
+        `Universidad primaria`),
+      
+      # La Salle Pachuca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad La Salle Pachuca"),
+        "Universidad La Salle cámpus Pachuca",
+        `Universidad primaria`),
+      
+       # Universidad Autónoma del Estado de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma del Estado de México"),
+        "Universidad Autónoma del Estado de México",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma de Nayarit
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad autónoma de Nayarit"),
+        "Universidad Autónoma de Nayarit",
+        `Universidad primaria`),
+      
+      # Universidad Contemporánea de las Américas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Contemporanea de las Americas"),
+        "Universidad Contemporánea de las Américas",
+        `Universidad primaria`),
+      
+      # Centro Universitario Instituto Superior de Informática y Computación (ISIC)
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Instituto Superior de Informática y Computación"),
+        "Centro Universitario Instituto Superior de Informática y Computación (ISIC)",
+        `Universidad primaria`),
+      
+      # U de Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma de Nuevo León") ,
+        "Universidad Autónoma de Nuevo Leon",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma Benito Juárez de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma Benito Juarez de oaxaca") ,
+        "Universidad Autónoma Benito Juárez de Oaxaca",
+        `Universidad primaria`),
+      
+      # Benemerita Universidad Autonoma de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Benemerita Universidad Autonoma de Puebla") ,
+        "Benemérita Universidad Autónoma de Puebla",
+        `Universidad primaria`),
+      
+       # Benemerita Universidad Autonoma de Querétaro
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Queretaro") ,
+        "Universidad Autónoma de Querétaro",
+        `Universidad primaria`),
+      
+      # U Sonora
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "UNIVERSIDAD DE SONORA") ,
+        "Universidad de Sonora",
+        `Universidad primaria`),
+      
+       # Universidad Autónoma de Tamaulipas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Tamaulipas") ,
+        "Universidad Autónoma de Tamaulipas",
+        `Universidad primaria`),
+      
+      # Universidad Marista Mérida
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Marista de Mérida") ,
+        "Universidad Marista cámpus Mérida",
+        `Universidad primaria`),
+      
+      # Universidad José Vasconcelos de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "vasconcelos de Oaxaca") | str_detect(`Universidad primaria`, "Vasconselos de Oaxaca"),
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Universidad Tecnologica
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Tecnologica de Mexico") ,
+        "Universidad Tecnológica de México",
+        `Universidad primaria`),
+      
+      # Universidad Ciudadana Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
+        "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`)
+      
+
+    )
+  
+  new_o2 <- o2_a1 |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`)
+  
+  new_o2 <- unique(new_o2)
+  
+  
+
+```
+
+
+
+### Activity 2
+
+
+```{r objective_2.A2}
+
+
+
+  
+  # Activity 2.2
+  o2_a2 <- o2_a2 |>
+    # Remove dots from entries
+    mutate( `Universidad primaria` = str_remove(`Universidad primaria`, "\\.")   ) |>
+    # University names verification
+    mutate(
+      
+      # Universidad Mexicana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "MEXICANA"),
+        "Universidad Mexicana",
+        `Universidad primaria`),
+      
+      # Universidad Juárez Autónoma de Tabasco
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad juarez Autónoma de tabasco"),
+        "Universidad Juárez Autónoma de Tabasco",
+        `Universidad primaria`),
+      
+      # Centro de estudios superiores en ciencias jurídicas y criminológicas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "superiores en ciencias jurídicas y criminológicas"),
+        "Centro de Estudios Superiores en Ciencias Jurídicas y Criminológicas",
+        `Universidad primaria`),
+      
+      # Universidad de Coahuila
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Coahuila"),
+        "Universidad Autónoma de Coahuila",
+        `Universidad primaria`),
+      
+      # Tecmilenio
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "TecMilenio"),
+        "Universidad Mundial",
+        `Universidad primaria`),
+      
+      # Centro Universitario República de México 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "REPÚBLICA DE MÉXICO"),
+        "Centro Universitario República de México",
+        `Universidad primaria`),
+      
+       # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Rosario castellanos") | str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      
+      # Universidad Tecnológica de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Tecnologica de México") ,
+        "Universidad Tecnológica de México",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Universitarios del Sur y Sureste (Solo hay un campus)
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Universitarios del Sur y Sureste") ,
+        "Universidad Centro de Estudios Universitarios del Sur y Sureste cámpus Chiapas",
+        `Universidad primaria`),
+      
+      # Instituto de Educación Digital del Estado de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Instituto Digital del Estado de Puebla") ,
+        "Instituto de Educación Digital del Estado de Puebla",
+        `Universidad primaria`),
+      
+       # Benemerita Universidad Autonoma de Querétaro
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Queretaro") ,
+        "Universidad Autónoma de Querétaro",
+        `Universidad primaria`),
+      
+      # La Salle Pachuca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad La Salle Pachuca"),
+        "Universidad La Salle cámpus Pachuca",
+        `Universidad primaria`),
+      
+       # Universidad Iberomexicana de Hidalgo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad IberoMexicana del Estado de Hidalgo") | str_detect(`Universidad primaria`, "Universidad Ibero Mexicana de Hidalgo."),
+        "Universidad Iberomexicana de Hidalgo",
+        `Universidad primaria`),
+      
+      
+      # Centro de Estudios Carbonell
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Carbonell") ,
+        "Centro de Estudios Jurídicos Carbonell",
+        `Universidad primaria`),
+      
+
+      
+      # Centro de Estudios Superiroes Gto
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de estudios de nivel medio y superior de Gua"),
+        "Centro de Estudios de Nivel Medio y Superior de Guanajuato",
+        `Universidad primaria`),
+      
+      # UVM Universidad del Valle de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad del valle de Mexico"),
+        "Universidad del Valle de México",
+        `Universidad primaria`),
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana") | str_detect(`Universidad primaria`, "Universidad autónoma metropolitana") ,
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+       # Universidad José Vasconcelos de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "vasconcelos de Oaxaca") ,
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`),
+      
+      # Universidad Ciudadana Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
+        "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`)
+
+    )
+  
+  new_o2 <- o2_a2 |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`) |>
+    rbind(new_o2)
+
+  new_o2 <- unique(new_o2)
+  
+
+```
+
+
+### Activity 4
+
+
+```{r objective_2.A4}
+
+
+
+  
+  # Activity 2.4
+  o2_a4 <- o2_a4 |>
+    # Remove dots from entries
+    mutate( `Universidad primaria` = str_remove(`Universidad primaria`, "\\.")   ) |>
+    # University names verification
+    mutate(
+      
+      # Universidad Tecnologica de Mexico
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Tecnologica de Mexico"),
+        "Universidad Tecnológica de México",
+        `Universidad primaria`),
+
+       # Universidad José Vasconcelos de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "vasconcelos de Oaxaca") | str_detect(`Universidad primaria`, "Vasconselos de Oaxaca"),
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`),
+      
+      
+      # Universidad Mexicana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "MEXICANA"),
+        "Universidad Mexicana",
+        `Universidad primaria`),
+      
+      # Universidad Juárez Autónoma de Tabasco
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad juarez Autónoma de tabasco"),
+        "Universidad Juárez Autónoma de Tabasco",
+        `Universidad primaria`),
+      
+      # Centro de estudios superiores en ciencias jurídicas y criminológicas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "superiores en ciencias jurídicas y criminológicas"),
+        "Centro de Estudios Superiores en Ciencias Jurídicas y Criminológicas",
+        `Universidad primaria`),
+      
+      # Universidad de Coahuila
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Coahuila"),
+        "Universidad Autónoma de Coahuila",
+        `Universidad primaria`),
+      
+      # Tecmilenio
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "TecMilenio"),
+        "Universidad Mundial",
+        `Universidad primaria`),
+      
+      # Centro Universitario República de México 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "REPÚBLICA DE MÉXICO"),
+        "Centro Universitario República de México",
+        `Universidad primaria`),
+      
+       # Universidad Michoacana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Michoacana de San Nicolas de Hidalgo"),
+        "Universidad Michoacana de San Nicolás de Hidalgo",
+        `Universidad primaria`),
+      
+      # Universidad de Chiapas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Autonoma de Chiapas") | str_detect(`Universidad primaria`, "autónoma de Chiapas"),
+        "Universidad Autónoma de Chiapas",
+        `Universidad primaria`),
+      
+      # Centro Carbonelle
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Carbonell"),
+        "Centro de Estudios Jurídicos Carbonell",
+        `Universidad primaria`),
+      
+      # Universidad de Coahuila
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Coahuila"),
+        "Universidad Autónoma de Coahuila",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma del Noreste
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad autónoma del noreste"),
+        "Universidad Autónoma del Noreste",
+        `Universidad primaria`),
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana") | str_detect(`Universidad primaria`, "Universidad autónoma metropolitana") ,
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+      # UVM Universidad del Valle de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad del valle de México"),
+        "Universidad del Valle de México",
+        `Universidad primaria`),
+      
+      # Barra de abogados
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Barra Nacional de Abogados"),
+        "Facultad de Derecho de la Barra Nacional de Abogados",
+        `Universidad primaria`),
+      
+       # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Rosario castellanos") | str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      
+      # Universidad Latinoamericana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Tecnológica Latinoamericana en Línea"),
+        "Universidad Tecnológica Latinoamericana",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Superiroes Gto
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Superiores de Guanajuato"),
+        "Centro de Estudios de Nivel Medio y Superior de Guanajuato",
+        `Universidad primaria`),
+      
+      # UG
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "UNIVERSIDAD DE GUANAJUATO"),
+        "Universidad de Guanajuato",
+        `Universidad primaria`),
+      
+       # Universidad Interamericana para el Desarrollo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Interamericana para el desarrollo") | str_detect(`Universidad primaria`, "UNID,"),
+        "Universidad Interamericana para el Desarrollo",
+        `Universidad primaria`),
+      
+       # Universidad Iberomexicana Hidalgo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ibero Mexicana de Hidalgo."),
+        "Universidad Iberomexicana de Hidalgo",
+        `Universidad primaria`),
+      
+      # Centro Universitario Hidalguense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "centro Universitario Hidalguense"),
+        "Centro Universitario Hidalguense",
+        `Universidad primaria`),
+      
+      # La Salle Pachuca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad La Salle Pachuca"),
+        "Universidad La Salle cámpus Pachuca",
+        `Universidad primaria`),
+      
+       # Universidad Autónoma del Estado de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma del Estado de México"),
+        "Universidad Autónoma del Estado de México",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma de Nayarit
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad autónoma de Nayarit"),
+        "Universidad Autónoma de Nayarit",
+        `Universidad primaria`),
+      
+      # Universidad Contemporánea de las Américas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Contemporanea de las Americas"),
+        "Universidad Contemporánea de las Américas",
+        `Universidad primaria`),
+      
+      # Centro Universitario Instituto Superior de Informática y Computación (ISIC)
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Instituto Superior de Informática y Computación"),
+        "Centro Universitario Instituto Superior de Informática y Computación (ISIC)",
+        `Universidad primaria`),
+      
+      # U de Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma de Nuevo León") ,
+        "Universidad Autónoma de Nuevo Leon",
+        `Universidad primaria`),
+      
+      # Universidad Autónoma Benito Juárez de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma Benito Juarez de oaxaca") ,
+        "Universidad Autónoma Benito Juárez de Oaxaca",
+        `Universidad primaria`),
+      
+      # Benemerita Universidad Autonoma de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Benemerita Universidad Autonoma de Puebla") ,
+        "Benemérita Universidad Autónoma de Puebla",
+        `Universidad primaria`),
+      
+       # Benemerita Universidad Autonoma de Querétaro
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Queretaro") ,
+        "Universidad Autónoma de Querétaro",
+        `Universidad primaria`),
+      
+      # U Sonora
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "UNIVERSIDAD DE SONORA") ,
+        "Universidad de Sonora",
+        `Universidad primaria`),
+      
+       # Universidad Autónoma de Tamaulipas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Tamaulipas") ,
+        "Universidad Autónoma de Tamaulipas",
+        `Universidad primaria`),
+      
+      # Universidad Marista Mérida
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Marista de Mérida") ,
+        "Universidad Marista cámpus Mérida",
+        `Universidad primaria`),
+      
+      # Universidad José Vasconsclos de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "vasconcelos de Oaxaca") ,
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Universidad Tecnologica
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Tecnologica de Mexico") ,
+        "Universidad Tecnológica de México",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Superiroes Gto
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Superiores de Guanajuato"),
+        "Centro de Estudios de Nivel Medio y Superior de Guanajuato",
+        `Universidad primaria`),
+      
+      # UVM Universidad del Valle de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad del valle de Mexico"),
+        "Universidad del Valle de México",
+        `Universidad primaria`),
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana") | str_detect(`Universidad primaria`, "Universidad autónoma metropolitana") ,
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+      
+      # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`),
+      
+      # Universidad Iberomexicana Hidalgo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ibero Mexicana de Hidalgo"),
+        "Universidad Iberomexicana de Hidalgo",
+        `Universidad primaria`),
+      
+      # Universidad Ciudadana Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
+        "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`)
+
+    )
+  
+  new_o2 <- o2_a4 |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`) |>
+    rbind(new_o2) |>
+    arrange(`Universidad primaria`)
+
+  new_o2 <- unique(new_o2)
+
+```
+
+
+At the end, we add the new entries of the secondary university column and export the data to a Excel Format
+
+
+```{r wrap_up}
+
+# Add the new entries by objective 
+  new_o1 <- new_o1 |>
+    rbind( tibble(`Universidad primaria` = "Universidad Mundial") )
+  
+# Export Data
+  
+  # Objective 1
+  write_xlsx(o1_litigation, "./Data/Objective_1/Activity_Litigation_Course.xlsx")
+  write_xlsx(o1_teacher, "./Data/Objective_1/Activity_Formador_Formadores.xlsx")
+  
+  # Objective 2
+  write_xlsx(o2_a1, "./Data/Objective_2/Activity_2.1.xlsx")
+  write_xlsx(o2_a2, "./Data/Objective_2/Activity_2.2.xlsx")
+  write_xlsx(o2_a4, "./Data/Objective_2/Activity_2.4.xlsx")
+  
+  # New_entries
+  
+  new_entries <- new_o1 |>
+    rbind(new_o2) |>
+    arrange(`Universidad primaria`)
+  
+  new_entries <- unique(new_entries)
+  write_xlsx(new_entries, "./New_Universities/New_Entries.xlsx")
+  
+  
+
+```
+
+# Objective Level Data and Global data
+
+Now that we have cleaned and identified the global new entries we now merge the data sets by objective.
+
+```{r obj_merge}
+# Certified People From Objective 1
+  objective_1 <- o1_litigation |>
+    rbind(o1_teacher) |>
+    filter(Certificación == 1)
+
+# Certified people from Objective 2
+  objective_2 <- o2_a1 |>
+    rbind(o2_a2) |>
+     rbind(o2_a4) |>
+    filter(Certificación == 1)
+  
+# Global data
+  global <- objective_1 |>
+    rbind(objective_2)
+  
+# New Entries certified
+  new_entries_cert <- new_entries |>
+    filter( `Universidad primaria` %in% unique(global$`Universidad primaria`))
+
+```
+
+
+
+Finally, we export the data.
+
+```{r export_final}
+
+# Export Data
+  
+  # Objective 1
+  write_xlsx(objective_1, "./Data/Objective_1/objective_1.xlsx")
+  
+  # Objective 2
+  write_xlsx(objective_1, "./Data/Objective_2/objective_2.xlsx")
+  
+  # Global
+  write_xlsx(objective_1, "./Data/global.xlsx")
+  
+  # New_entries Certified
+  write_xlsx(new_entries, "./New_Universities/New_Entries_Certified.xlsx")
+
+```
