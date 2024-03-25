@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Lothar Mateo">
-<meta name="dcterms.date" content="2024-03-24">
+<meta name="dcterms.date" content="2024-03-25">
 
 <title>MEL Assistant Tasks</title>
 <style>
@@ -103,6 +103,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#objective-and-global-level-export" id="toc-objective-and-global-level-export" class="nav-link" data-scroll-target="#objective-and-global-level-export">Objective and Global Level Export</a></li>
   <li><a href="#indicator-1-data-set" id="toc-indicator-1-data-set" class="nav-link" data-scroll-target="#indicator-1-data-set">Indicator 1 Data Set</a></li>
   </ul></li>
+  <li><a href="#information-for-the-report" id="toc-information-for-the-report" class="nav-link" data-scroll-target="#information-for-the-report">Information for the report</a>
+  <ul class="collapse">
+  <li><a href="#demographic-info-and-number-of-participants" id="toc-demographic-info-and-number-of-participants" class="nav-link" data-scroll-target="#demographic-info-and-number-of-participants">Demographic info and Number of participants</a></li>
+  </ul></li>
   </ul>
 </nav>
 </div>
@@ -127,7 +131,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">March 24, 2024</p>
+      <p class="date">March 25, 2024</p>
     </div>
   </div>
   
@@ -1422,7 +1426,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Get Professors of Objective 2</span></span>
 <span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  o2_ind_1 <span class="ot">&lt;-</span> <span class="fu">indicator_1</span>(objective_2, new_o2)</span>
-<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_xlsx</span>(o2_ind_1, <span class="st">"./Indicators/Indicator_1/o2_new_lawschools.xlsx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_xlsx</span>(o2_ind_1, <span class="st">"./Indicators/Indicator_1/o2_new_lawschools.xlsx"</span>)</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Global unique entries for both objectives</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>  new_ind_1 <span class="ot">&lt;-</span> o1_ind_1 <span class="sc">|&gt;</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">select</span>( <span class="st">`</span><span class="at">Universidad primaria</span><span class="st">`</span> ) <span class="sc">|&gt;</span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">rbind</span>( <span class="fu">select</span>(o2_ind_1,  <span class="st">`</span><span class="at">Universidad primaria</span><span class="st">`</span>  ) )</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>  new_ind_1 <span class="ot">&lt;-</span> <span class="fu">unique</span>(new_ind_1) <span class="sc">|&gt;</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(<span class="fu">desc</span>( <span class="st">`</span><span class="at">Universidad primaria</span><span class="st">`</span>) )</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">write_xlsx</span>(new_ind_1, <span class="st">"./Indicators/Indicator_1/new_lawschools.xlsx"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
+</section>
+</section>
+<section id="information-for-the-report" class="level1">
+<h1>Information for the report</h1>
+<p>In this section, we extract general information about the course participants to present in the quarterly reports by objective and training sessions.</p>
+<section id="demographic-info-and-number-of-participants" class="level2">
+<h2 class="anchored" data-anchor-id="demographic-info-and-number-of-participants">Demographic info and Number of participants</h2>
+<div class="cell">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># For each objectives' activities </span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  summary <span class="ot">&lt;-</span>  o2_a4 <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(<span class="st">`</span><span class="at">Tipo de particioante</span><span class="st">`</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarize</span>( <span class="at">n =</span> <span class="fu">n</span>() )</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a> summary <span class="ot">&lt;-</span>  o2_a4 <span class="sc">|&gt;</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(Gender) <span class="sc">|&gt;</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarize</span>( <span class="at">n =</span> <span class="fu">n</span>() )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 </section>

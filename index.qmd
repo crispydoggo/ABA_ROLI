@@ -1339,4 +1339,28 @@ Finally, we arrange the data to identify the number of law schools with professo
 
   
 ```
+# Information for the report
+
+In this section, we extract general information about the course participants to present in the quarterly reports by objective and training sessions.
+
+
+## Demographic info and Number of participants
+
+```{r demo_info}
+
+# For each objectives' activities 
+
+  summary <-  o2_a4 |>
+    group_by(`Tipo de particioante`) |>
+    summarize( n = n() )
+
+ summary <-  o2_a4 |>
+    group_by(Gender) |>
+    summarize( n = n() )
+
+  
+```
+
+
+
 
