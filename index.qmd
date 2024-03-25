@@ -1325,6 +1325,17 @@ Finally, we arrange the data to identify the number of law schools with professo
 # Get Professors of Objective 2
   o2_ind_1 <- indicator_1(objective_2, new_o2)
   write_xlsx(o2_ind_1, "./Indicators/Indicator_1/o2_new_lawschools.xlsx")
+  
+# Global unique entries for both objectives
+  
+  new_ind_1 <- o1_ind_1 |>
+    select( `Universidad primaria` ) |>
+    rbind( select(o2_ind_1,  `Universidad primaria`  ) )
+  
+  new_ind_1 <- unique(new_ind_1) |>
+    arrange(desc( `Universidad primaria`) )
+  
+  write_xlsx(new_ind_1, "./Indicators/Indicator_1/new_lawschools.xlsx")
 
   
 ```
