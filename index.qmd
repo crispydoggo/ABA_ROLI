@@ -23,30 +23,44 @@ library(writexl)
 
 # Introduction
 
-# Course Level Data Cleaning
+This document aims to demonstrate how the data to calculate the key indicators is processed and cleaned to ensure its quality and integrity. The indicators are the following:
+
+1. Number of law schools with professors trained by the program in oral litigation
+
+2. Average percentage increase in students’ knowledge of oral litigation
+
+3. Average percentage increase in professors’ knowledge of oral litigation
+
+4. Number of students trained in oral litigation
+
+5. Number of professors trained in oral litigation
+
+6. Number of oral litigation training workshops
+
+
+We clean and group the data by activity/course, objective, and intervention; first, let's import the data to process from the Google Drive folder.
 
 ```{r data_import}
 
 # Import the official Universities' names
-uni_list <- googlesheets4::read_sheet("1ijipRkGUpuijXzqwZgzEE7x-BFNA7ZpezArofZijl6Y")
+uni_list <- googlesheets4::read_sheet("1WV1EQDZs9k5k97IDDYMX5eMQk3fVu81QWjGUAMmrRk8")
+
+# Import de course participants data from Objective 1, Activity 1 and 4
+o1_a1 <- googlesheets4::read_sheet("1bXsqjLTJeaadzrXTduaJOS3m94ZEbN8ftMr-hVnSiJU")
+o1_a4 <- googlesheets4::read_sheet("11mWmxLgiMtqeV77FSvR0s3OYzEZ7s8osj4llvKu15I8")
+
 
 # Import de course participants data from Objective 2, Activity 1, 2 and 4
-o1_litigation <- googlesheets4::read_sheet("1JS9sMImsNIiF82iMIOM6yUM2WGxwGy7hul-NxDAhbJc")
-o1_teacher <- googlesheets4::read_sheet("1dfS58RkcFLVBFdQRNurCuaPQAFbwREtBo5KbQZmsSXY")
-
-
-# Import de course participants data from Objective 2, Activity 1, 2 and 4
-o2_a1 <- googlesheets4::read_sheet("1cFPiLyCP_tLQ8cn8mAUsLjokeVHYFieWN4OT_7QJ_jE")
-o2_a2 <- googlesheets4::read_sheet("1chwoe399-qFgz-UneA2fGoVTv5sEJycKuIfCLzWu6Us")
-o2_a4 <- googlesheets4::read_sheet("1NFfhQoeSmNPUJxxQIahgxHinPKRTZ5LF-kk5HiBXjpw")
+o2_a1 <- googlesheets4::read_sheet("1HBZZsSTacrohhtdpf2EXQcmq-48GOrW4DkYE4fk1DRY")
+o2_a2 <- googlesheets4::read_sheet("1KeJjzPVOQUYdS9nd2riDYyyAd5yB9OA5EiG9V_ZsV1s")
+o2_a3 <- googlesheets4::read_sheet("18wze739dbqmRRpqH5jm36Lpv9iVhTrBMYUJYC7Tj1WA")
+o2_a4 <- googlesheets4::read_sheet("1WkUUgQfIZD2xH5F_7hackpnOeClYzNCaHFs9jI6CMgg")
 
 ```
 
-## Objective 1. Cleaning
+Then, we write a small function to ensure that the proper criteria are applied to each participant's certifications.
 
-First we clean the objective 1
-
-```{r objective_1}
+```{r quality_check}
 
 # Quality Check Function of Criteria
   quality_check <- function(data,num_c = c(3,5)){
@@ -80,15 +94,30 @@ First we clean the objective 1
   return(data)
 }
 
+```
+
+# Data Cleaning - Course Level
+
+This section describes how we clean the universities' text entry responses; the data is cleaned by objective and course level. Notice that this code could be more efficient since it must discover each unique entry by hand. We implemented this approach since the number of observations is relatively small.
+
+One note regarding the assistance criteria: This quarter, instead of the usual 80% assistance criteria, we will use 2 of 3 and 3 of 5.
+
+## Objective 1. Cleaning
+
+We clean the data for the first objective, which trains professors in the initial hearing and trains them to disseminate the knowledge of the intervention's courses.
+
+### Activity 1
+
+```{r objective_1.A1}
+
 # Quality check in objective 1
-  o1_litigation <- quality_check(o1_litigation, 5)
-  o1_teacher <- quality_check(o1_teacher, 3)
+# o1_a1 <- quality_check(o1_litigation, 5)
+# o1_a4 <- quality_check(o1_teacher, 3)
   
 # University names verification
   
-  
   # Initial Hearing Litigation
-  o1_litigation <- o1_litigation |>
+  o1_a1 <- o1_a1 |>
     mutate(
       
       # Anáhuac Oaxaca
@@ -142,15 +171,21 @@ First we clean the objective 1
   
   typos_id = c(144637, 146877)
   
-  new_o1 <- o1_litigation |>
+  new_o1 <- o1_a1 |>
     mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
     filter(uni_check) |>
     select(`Universidad primaria`) 
   
+```
   
+
+  
+### Activity 4
+
+```{r objective_1.A4}  
   # Formador de Formadores
   
-  o1_teacher <- o1_teacher |>
+  o1_a4 <- o1_a4 |>
     mutate(
       # Universidad Autónoma de Chihuahua
       `Universidad primaria` = ifelse(
@@ -184,17 +219,25 @@ First we clean the objective 1
       `Universidad primaria` = ifelse(
         str_detect(`Universidad primaria`, "Sanjuanense") ,
         "Instituto Sanjuanense de Estudios Superiores",
-        `Universidad primaria`)
+        `Universidad primaria`), 
+      
+      # Golfo de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Golfo de México campus oaxaca"),
+        "Universidad del Golfo de México cámpus Oaxaca",
+        `Universidad primaria`),
+       
       
     )
   
   typos_id <- c(typos_id, 144629)
   
-  new_o1 <- o1_teacher |>
+  new_o1 <- o1_a4 |>
     mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
     filter(uni_check) |>
     select(`Universidad primaria`) |>
     rbind(new_o1)
+  
   
   new_o1 <- unique(new_o1)
 
@@ -204,14 +247,17 @@ First we clean the objective 1
 
 ### Activity 1
 
-We start with Activuty 1
+Some notes of programmatic decisions taken on this objective:
+
+- Hector N. presented a case for just assisting once and received his certification in A2.1.
+- Alison N. fulfilled all the criteria, but she wasn't certified in A2.1
 
 ```{r objective_2.A1}
 
 # Quality check in objective 2
-  o2_a1 <- quality_check(o2_a1, 5)
-  o2_a2 <- quality_check(o2_a2, 5)
-  o2_a4 <- quality_check(o2_a1, 3)
+# o2_a1 <- quality_check(o2_a1, 5)
+# o2_a2 <- quality_check(o2_a2, 5)
+# o2_a4 <- quality_check(o2_a1, 3)
 
   
 # University names verification
@@ -398,17 +444,34 @@ We start with Activuty 1
       `Universidad primaria` = ifelse(
         str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
         "Universidad Ciudadana de Nuevo León",
-        `Universidad primaria`)
+        `Universidad primaria`),
       
-
+      # Golfo de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Golfo de México campus oaxaca"),
+        "Universidad del Golfo de México cámpus Oaxaca",
+        `Universidad primaria`),
+      
+      # Judicial del Estado de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Judicial del Estado de Puebla"),
+        "Escuela Estatal de Formación Judicial del Estado de Puebla",
+        `Universidad primaria`),
+      # Instituto Tecnologico Latinoamericano
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Instituto Tecnologico Latinoamericano"),
+        "Instituto Tecnológico Latinoamericano",
+        `Universidad primaria`)
     )
   
-  new_o2 <- o2_a1 |>
+  
+new_o2 <- o2_a1 |>
     mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
     filter(uni_check) |>
     select(`Universidad primaria`)
   
-  new_o2 <- unique(new_o2)
+  new_o2 <- unique(new_o2) |>
+    arrange(desc(`Universidad primaria`) )
   
   
 
@@ -421,9 +484,6 @@ We start with Activuty 1
 
 ```{r objective_2.A2}
 
-
-
-  
   # Activity 2.2
   o2_a2 <- o2_a2 |>
     # Remove dots from entries
@@ -552,6 +612,18 @@ We start with Activuty 1
       `Universidad primaria` = ifelse(
         str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
         "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`),
+      
+      # Milenium
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Milenium"),
+        "Universidad Milenium",
+        `Universidad primaria`),
+      
+      # Judicial del Estado de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Judicial del Estado de Puebla"),
+        "Escuela Estatal de Formación Judicial del Estado de Puebla",
         `Universidad primaria`)
 
     )
@@ -562,7 +634,237 @@ We start with Activuty 1
     select(`Universidad primaria`) |>
     rbind(new_o2)
 
-  new_o2 <- unique(new_o2)
+  new_o2 <- unique(new_o2) |>
+    arrange( desc(`Universidad primaria`) )
+  
+
+```
+
+### Activity 3
+
+
+```{r objective_2.A3}
+
+  
+  # Activity 2.2
+  o2_a3  <- o2_a3 |>
+    # Remove dots from entries
+    mutate( `Universidad primaria` = str_remove(`Universidad primaria`, "\\.")   ) |>
+    # University names verification
+    mutate(
+      
+      # Universidad Mexicana
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "MEXICANA"),
+        "Universidad Mexicana",
+        `Universidad primaria`),
+      
+      # Universidad Juárez Autónoma de Tabasco
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad juarez Autónoma de tabasco"),
+        "Universidad Juárez Autónoma de Tabasco",
+        `Universidad primaria`),
+      
+      # Centro de estudios superiores en ciencias jurídicas y criminológicas
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "superiores en ciencias jurídicas y criminológicas"),
+        "Centro de Estudios Superiores en Ciencias Jurídicas y Criminológicas",
+        `Universidad primaria`),
+      
+      # Universidad de Coahuila
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Coahuila"),
+        "Universidad Autónoma de Coahuila",
+        `Universidad primaria`),
+      
+      # Tecmilenio
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "TecMilenio"),
+        "Universidad Mundial",
+        `Universidad primaria`),
+      
+      # Centro Universitario República de México 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "REPÚBLICA DE MÉXICO"),
+        "Centro Universitario República de México",
+        `Universidad primaria`),
+      
+       # Rosario Castellanos
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Rosario castellanos") | str_detect(`Universidad primaria`, "Universidad Rosario Castellanos"),
+        "Universidad Rosario Catellanos",
+        `Universidad primaria`),
+      
+      # Universidad Tecnológica de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Tecnologica de México") ,
+        "Universidad Tecnológica de México",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Universitarios del Sur y Sureste (Solo hay un campus)
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Universitarios del Sur y Sureste") ,
+        "Universidad Centro de Estudios Universitarios del Sur y Sureste cámpus Chiapas",
+        `Universidad primaria`),
+      
+      # Instituto de Educación Digital del Estado de Puebla
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Instituto Digital del Estado de Puebla") ,
+        "Instituto de Educación Digital del Estado de Puebla",
+        `Universidad primaria`),
+      
+       # Benemerita Universidad Autonoma de Querétaro
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Queretaro") ,
+        "Universidad Autónoma de Querétaro",
+        `Universidad primaria`),
+      
+      # La Salle Pachuca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad La Salle Pachuca"),
+        "Universidad La Salle cámpus Pachuca",
+        `Universidad primaria`),
+      
+       # Universidad Iberomexicana de Hidalgo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad IberoMexicana del Estado de Hidalgo") | str_detect(`Universidad primaria`, "Universidad Ibero Mexicana de Hidalgo."),
+        "Universidad Iberomexicana de Hidalgo",
+        `Universidad primaria`),
+      
+      
+      # Centro de Estudios Carbonell
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Carbonell") ,
+        "Centro de Estudios Jurídicos Carbonell",
+        `Universidad primaria`),
+      
+
+      
+      # Centro de Estudios Superiroes Gto
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de estudios de nivel medio y superior de Gua"),
+        "Centro de Estudios de Nivel Medio y Superior de Guanajuato",
+        `Universidad primaria`),
+      
+      # UVM Universidad del Valle de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad del valle de Mexico"),
+        "Universidad del Valle de México",
+        `Universidad primaria`),
+      
+      # UAM 
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autónoma Metropolitana") | str_detect(`Universidad primaria`, "Universidad autónoma metropolitana") ,
+        "Universidad Autónoma Metripolitana",
+        `Universidad primaria`),
+      
+       # Universidad José Vasconcelos de Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "vasconcelos de Oaxaca") ,
+        "Universidad José Vasconcelos de Oaxaca",
+        `Universidad primaria`),
+      
+      # Instituto Sanjuanense
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Sanjuanense") ,
+        "Instituto Sanjuanense de Estudios Superiores",
+        `Universidad primaria`),
+      
+      # Universidad Ciudadana Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
+        "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`),
+      
+      # Centro de Especialización Judicial del Estado de Tabasco
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de especialización judicial de Tabasco") | str_detect(`Universidad primaria`, "Centro de Especialización del Poder Judicial"),
+        "Centro de Especialización Judicial del Estado de Tabasco",
+        `Universidad primaria`),
+      
+      # Universidad Modelo cámpus Valladolid
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Modelo") & str_detect(`Universidad primaria`, "Valladolid"),
+        "Universidad Modelo cámpus Valladolid",
+        `Universidad primaria`),
+      
+      # Universidad La Salle cámpus Victoria
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Salle") & str_detect(`Universidad primaria`, "Victoria"),
+        "Universidad La Salle cámpus Victoria",
+        `Universidad primaria`),
+      
+      # Universidad Juárez Autónoma de Tabasco
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Juárez autónoma de Tabasco"),
+        "Universidad Juárez Autónoma de Tabasco",
+        `Universidad primaria`),
+      
+      # Universidad Carolina
+       `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "carolina") | str_detect(`Universidad primaria`, "CAROLINA"),
+        "Universidad Carolina",
+        `Universidad primaria`),
+      
+      # Universidad del Istmo
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "ISTMO"),
+        "Universidad del Istmo",
+        `Universidad primaria`),
+      
+      # Instituto de Formación Profesional y Estudios Superiores
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "FORMACIÓN Y ESTUDIOS PROFESIONALES"),
+        "Instituto de Formación Profesional y Estudios Superiores",
+        `Universidad primaria`),
+      
+       # Universidad Interamericana para el Desarrollo cámpus San Luis Potosí
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Interamericana para el desarrollo"),
+        "Universidad Interamericana para el Desarrollo cámpus San Luis Potosí",
+        `Universidad primaria`),
+      
+      # Instituto Tecnológico Latinoamericano
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "tecnológico latinoamericano") | str_detect(`Universidad primaria`, "Tecnologico Latinoamericano"),
+        "Instituto Tecnológico Latinoamericano",
+        `Universidad primaria`),
+      
+      # Universidad Milenium
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Milenium"),
+        "Universidad Milenium",
+        `Universidad primaria`),
+      
+      # Golfo de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Golfo de México campus oaxaca"),
+        "Universidad del Golfo de México cámpus Oaxaca",
+        `Universidad primaria`),
+      
+      # Instituto de Formación Profesional de la Fiscalía General de Justicia de la Ciudad de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "FGJCDMX"),
+        "Instituto de Formación Profesional de la Fiscalía General de Justicia de la Ciudad de México",
+        `Universidad primaria`),
+      
+      # Universidad Autonoma de Nuevo León
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Autonoma de Nuevo León"),
+        "Universidad Autonoma de Nuevo Leon",
+        `Universidad primaria`)
+
+    )
+  
+
+  new_o2 <- o2_a3 |>
+    mutate(uni_check = !(`Universidad primaria` %in% uni_list$Category)   ) |>
+    filter(uni_check) |>
+    select(`Universidad primaria`) |>
+    rbind(unique(new_o2))
+
+  new_o2 <- unique(new_o2) |> 
+    arrange( desc(`Universidad primaria`) )
   
 
 ```
@@ -847,8 +1149,76 @@ We start with Activuty 1
       `Universidad primaria` = ifelse(
         str_detect(`Universidad primaria`, "Universidad Ciudadana") | str_detect(`Universidad primaria`, "CIUDADANA"),
         "Universidad Ciudadana de Nuevo León",
+        `Universidad primaria`),
+      
+      # Centro de Estudios Universitarios del Sur y del Sureste
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro de Estudios Universitarios del Sur y del Sureste"),
+        "Universodad Centro de Estudios Universitarios del Sur y del Sureste cámpus Campeche",
+        `Universidad primaria`),
+      
+      # Centro universitario República de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Centro universitario República de México"),
+        "Centro Universitario República de México",
+        `Universidad primaria`),
+      
+      # INSTITUTO NACIONAL DE CIENCIAS PENALES
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "INSTITUTO NACIONAL DE CIENCIAS PENALES"),
+        "Instituto Nacional de Ciencias Penales",
+        `Universidad primaria`),
+      
+      # Instituto Nacional de Estudios Sindicales y Administración Pública
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Estudios Sindicales y de Administ"),
+        "Instituto Nacional de Estudios Sindicales y Administración Pública",
+        `Universidad primaria`),
+      
+      # UNIVERSIDAD AUTÓNOMA DE NAYARIT
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "AUTÓNOMA DE NAYARIT") |  str_detect(`Universidad primaria`, "Autonoma de Nayarit"),
+        "Universidad Autónoma de Nayarit",
+        `Universidad primaria`),
+      
+      # Universidad Vizcaya de las Américas cámpus Victoria
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "VIZCAYA DE LAS AMERICAS CAMPUS VI"),
+        "Universidad Vizcaya de las Américas cámpus Victoria",
+        `Universidad primaria`),
+      
+      # Abierta y a Distancia de México
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Abierta y a Distancia"),
+        "Universidad Abierta y a Distancia de México",
+        `Universidad primaria`),
+      
+      # Universidad Interamericana para el Desarrollo cámpus Oaxaca
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Universidad Interamericana"),
+        "Universidad Interamericana para el Desarrollo cámpus Oaxaca",
+        `Universidad primaria`),
+      
+      # Universidad Milenium
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "Milenium"),
+        "Universidad Milenium",
+        `Universidad primaria`),
+      
+      # UNIVERSIDAD DEL VALLE DE MATATIPAC
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "atatipac"),
+        "Universidad del Valle de Matatipac",
+        `Universidad primaria`),
+      
+       # UNIVERSIDAD DEL VALLE DE MATATIPAC VICTORUIA
+      `Universidad primaria` = ifelse(
+        str_detect(`Universidad primaria`, "VALLE DE MATATIPAC"),
+        "Universidad del Valle de Matatipac cámpus Victoria",
         `Universidad primaria`)
+      
 
+      
     )
   
   new_o2 <- o2_a4 |>
@@ -858,88 +1228,104 @@ We start with Activuty 1
     rbind(new_o2) |>
     arrange(`Universidad primaria`)
 
-  new_o2 <- unique(new_o2)
+  new_o2 <- unique(new_o2) |>
+    arrange( desc(`Universidad primaria`) )
 
 ```
 
 
-At the end, we add the new entries of the secondary university column and export the data to a Excel Format
+# Data Sets for Indicators
 
+We are only interested in calculating the first indicator: The number of law schools with professors trained by the program in oral litigation/mediation and alternative dispute resolution mechanisms. Nevertheless, we will still construct a database for each objective and the global one.
 
-```{r wrap_up}
+## Course Level Export
+
+We will export the course-level data to Excel format and add the new entries of the secondary university column.
+
+```{r export_course}
 
 # Add the new entries by objective 
   new_o1 <- new_o1 |>
     rbind( tibble(`Universidad primaria` = "Universidad Mundial") )
+
+# Quality Check of Objective 1 (No certification data)
+  o1_a1 <- quality_check(o1_a1, 5)
+  o1_a4 <- quality_check(o1_a4, 3)
+  
   
 # Export Data
   
   # Objective 1
-  write_xlsx(o1_litigation, "./Data/Objective_1/Activity_Litigation_Course.xlsx")
-  write_xlsx(o1_teacher, "./Data/Objective_1/Activity_Formador_Formadores.xlsx")
+  write_xlsx(o1_a1, "./Data/Objective_1/Activity_1.1.xlsx")
+  write_xlsx(o1_a4, "./Data/Objective_1/Activity_1.4.xlsx")
   
   # Objective 2
   write_xlsx(o2_a1, "./Data/Objective_2/Activity_2.1.xlsx")
   write_xlsx(o2_a2, "./Data/Objective_2/Activity_2.2.xlsx")
+  write_xlsx(o2_a2, "./Data/Objective_2/Activity_2.3.xlsx")
   write_xlsx(o2_a4, "./Data/Objective_2/Activity_2.4.xlsx")
   
-  # New_entries
-  
-  new_entries <- new_o1 |>
-    rbind(new_o2) |>
-    arrange(`Universidad primaria`)
-  
-  new_entries <- unique(new_entries)
-  write_xlsx(new_entries, "./New_Universities/New_Entries.xlsx")
-  
-  
-
 ```
 
-# Objective Level Data and Global data
+## Objective and Global Level Export
 
-Now that we have cleaned and identified the global new entries we now merge the data sets by objective.
+We now merge the data sets by objective and get the global data set.
 
-```{r obj_merge}
+```{r export_objective}
 # Certified People From Objective 1
-  objective_1 <- o1_litigation |>
-    rbind(o1_teacher) |>
+  objective_1 <- o1_a1 |>
+    rbind(o1_a4) |>
     filter(Certificación == 1)
 
 # Certified people from Objective 2
   objective_2 <- o2_a1 |>
     rbind(o2_a2) |>
-     rbind(o2_a4) |>
+    rbind(o2_a3) |>
+    rbind(o2_a4) |>
     filter(Certificación == 1)
   
 # Global data
   global <- objective_1 |>
     rbind(objective_2)
   
-# New Entries certified
-  new_entries_cert <- new_entries |>
-    filter( `Universidad primaria` %in% unique(global$`Universidad primaria`))
-
-```
-
-
-
-Finally, we export the data.
-
-```{r export_final}
-
 # Export Data
   
   # Objective 1
   write_xlsx(objective_1, "./Data/Objective_1/objective_1.xlsx")
   
   # Objective 2
-  write_xlsx(objective_1, "./Data/Objective_2/objective_2.xlsx")
+  write_xlsx(objective_2, "./Data/Objective_2/objective_2.xlsx")
   
   # Global
-  write_xlsx(objective_1, "./Data/global.xlsx")
+  write_xlsx(global, "./Data/global.xlsx")
   
-  # New_entries Certified
-  write_xlsx(new_entries, "./New_Universities/New_Entries_Certified.xlsx")
-
 ```
+
+## Indicator 1 Data Set
+
+Finally, we arrange the data to identify the number of law schools with professors trained by the program in oral litigation. We will use the objectives data sets and the new law school entries data set for this.
+
+```{r export_indicator1}
+
+
+# Function that filters the data of the professors not yet registered
+  indicator_1 <- function(data, new){
+      data <- data |>
+        filter( (`Tipo de particioante` == "Professor") ) |>
+        filter(  `Universidad primaria` %in% new$`Universidad primaria` | `Universidad secundaria`  %in% new$`Universidad primaria`  ) |>
+        select( `Nombre del participante`:`Universidad secundaria`  )
+      
+      return(data)
+  }
+
+# Get Professors of Objective 1
+  o1_ind_1 <- indicator_1(objective_1, new_o1)
+  write_xlsx(o1_ind_1, "./Indicators/Indicator_1/o1_new_lawschools.xlsx")
+
+# Get Professors of Objective 2
+  o2_ind_1 <- indicator_1(objective_2, new_o2)
+  write_xlsx(o2_ind_1, "./Indicators/Indicator_1/o2_new_lawschools.xlsx")
+
+  
+```
+
