@@ -1275,15 +1275,37 @@ We now merge the data sets by objective and get the global data set.
 # Certified People From Objective 1
   objective_1 <- o1_a1 |>
     rbind(o1_a4) |>
-    filter(Certificación == 1)
+    filter(Certificación == 1) |>
+    # Change the scale to 100 and add an epsilon > 0 if == 0
+    mutate(
+      
+      `Calificación pre-test (0-10)` = `Calificación pre-test (0-10)`*10,
+      `Calificación pre-test (0-10)` = ifelse( `Calificación pre-test (0-10)` == 0, 0.00001, `Calificación pre-test (0-10)`),
+      `Calificación post-test (0-10)` = `Calificación post-test (0-10)`*10,
+    )
 
 # Certified people from Objective 2
   objective_2 <- o2_a1 |>
     rbind(o2_a2) |>
     rbind(o2_a3) |>
     rbind(o2_a4) |>
-    filter(Certificación == 1)
-  
+    filter(Certificación == 1) |>
+    # Change the scale to 100 and add an epsilon > 0 if == 0
+    mutate(
+      `Calificación pre-test (0-10)` = `Calificación pre-test (0-10)`*10,
+      `Calificación pre-test (0-10)` = ifelse( `Calificación pre-test (0-10)` == 0, 0.00001, `Calificación pre-test (0-10)`),
+      `Calificación post-test (0-10)` = `Calificación post-test (0-10)`*10,
+    ) |>
+    # Correct state names
+    mutate(
+      `Estado de residencia`  = ifelse(
+        str_detect(`Estado de residencia`, "Ciudad de") | str_detect(`Estado de residencia`,"istrito"),
+        "Ciudad de Mexico, Mexico",
+        `Estado de residencia`
+      )
+    )
+
+
 # Global data
   global <- objective_1 |>
     rbind(objective_2)
@@ -1350,13 +1372,28 @@ In this section, we extract general information about the course participants to
 
 # For each objectives' activities 
 
-  summary <-  o2_a4 |>
+  certified <- function(data){
+    
+    data <- data |>
+      filter(Certificación == 1)
+    
+    return(data)
+  }
+
+# Only certified participants are considered
+
+  sdata <- certified(o2_a4)
+
+
+# For each objectives' activities 
+  st_prof <-  sdata |>
     group_by(`Tipo de particioante`) |>
     summarize( n = n() )
 
- summary <-  o2_a4 |>
-    group_by(Gender) |>
-    summarize( n = n() )
+   st_gender <-  sdata |>
+      group_by(Gender) |>
+      summarize( n = n() )
+
 
   
 ```
