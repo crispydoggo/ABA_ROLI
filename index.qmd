@@ -63,33 +63,59 @@ Then, we write a small function to ensure that the proper criteria are applied t
 ```{r quality_check}
 
 # Quality Check Function of Criteria
-  quality_check <- function(data,num_c = c(3,5)){
+  quality_check <- function(data, num_c = c(3,5), assist_cert = c(TRUE, FALSE)){
     
-  if (num_c == 3){
-    c_assist <- 2
-  } else {
-    c_assist <- 3
-  }
+      if (num_c == 3){
+        c_assist <- 2
+      } else {
+        c_assist <- 3
+      }
     
-  data <- data |>
-  # All CURP to upper case
-  mutate( CURP = toupper(CURP) ) |>
-  rowwise() |>
-  mutate(
-    # Right assistance criteria
-    `Cumple requisito de asistencia` = ifelse(
-      sum( c_across(`Asistencia D1`:`Asistencia D5`), na.rm = TRUE ) >= c_assist,
-      1, # If they had 80% > of assistance 
-      0 # If they had 80% < of assistance
-    ),
-    # Received Certification
-    Certificación = ifelse(
-      sum( c_across(`Cumple requisito de asistencia`:`Encuesta de satisfacción`), na.rm = TRUE) == 4,
-      1, # Certified if all the requirements
-      0 # Missed at least one requirement
-    )
-  ) |>
-  ungroup()
+    
+      # Two Cases: If agreed assistance and certified criteria or empty
+      if (assist_cert){
+        
+        data <- data |>
+          mutate(
+             # All CURP to upper case
+              CURP = toupper(CURP),
+              # Change certificación to integer
+              Certificación = as.integer(Certificación),
+              # Change requisito d asistencia to integer
+              `Cumple requisito de asistencia` = as.integer(`Cumple requisito de asistencia`)
+          )
+      
+        
+      } else {
+        data <- data |>
+          mutate(
+             # All CURP to upper case
+              CURP = toupper(CURP),
+              # Change certificación to integer
+              Certificación = as.integer(Certificación),
+              # Change requisito d asistencia to integer
+              `Cumple requisito de asistencia` = as.integer(`Cumple requisito de asistencia`)
+          ) |>
+          rowwise() |>
+          mutate(
+            # Right assistance criteria
+            `Cumple requisito de asistencia` = ifelse(
+              sum( c_across(`Asistencia D1`:`Asistencia D5`), na.rm = TRUE ) >= c_assist,
+              1, # If they had 80% > of assistance 
+              0 # If they had 80% < of assistance
+            ),
+            # Received Certification
+            Certificación = ifelse(
+              sum( c_across(`Cumple requisito de asistencia`:`Encuesta de satisfacción`), na.rm = TRUE) == 4,
+              1, # Certified if all the requirements
+              0 # Missed at least one requirement
+            )
+          ) |>
+          ungroup() 
+      }
+      
+      
+      
   
   return(data)
 }
@@ -110,9 +136,6 @@ We clean the data for the first objective, which trains professors in the initia
 
 ```{r objective_1.A1}
 
-# Quality check in objective 1
-# o1_a1 <- quality_check(o1_litigation, 5)
-# o1_a4 <- quality_check(o1_teacher, 3)
   
 # University names verification
   
@@ -874,9 +897,6 @@ new_o2 <- o2_a1 |>
 
 
 ```{r objective_2.A4}
-
-
-
   
   # Activity 2.4
   o2_a4 <- o2_a4 |>
@@ -1249,9 +1269,14 @@ We will export the course-level data to Excel format and add the new entries of 
     rbind( tibble(`Universidad primaria` = "Universidad Mundial") )
 
 # Quality Check of Objective 1 (No certification data)
-  o1_a1 <- quality_check(o1_a1, 5)
-  o1_a4 <- quality_check(o1_a4, 3)
+  o1_a1 <- quality_check(o1_a1, 5, FALSE)
+  o1_a4 <- quality_check(o1_a4, 3, FALSE)
   
+# Quality Check of Objective 2 (Certification data)
+  o2_a1 <- quality_check(o2_a1, 5, TRUE)
+  o2_a2 <- quality_check(o2_a2, 5, TRUE)
+  o2_a3 <- quality_check(o2_a3, 5, TRUE)
+  o2_a4 <- quality_check(o2_a4, 3, TRUE)
   
 # Export Data
   
@@ -1275,6 +1300,7 @@ We now merge the data sets by objective and get the global data set.
 # Certified People From Objective 1
   objective_1 <- o1_a1 |>
     rbind(o1_a4) |>
+    # We only consider certified alumni
     filter(Certificación == 1) |>
     # Change the scale to 100 and add an epsilon > 0 if == 0
     mutate(
@@ -1289,6 +1315,7 @@ We now merge the data sets by objective and get the global data set.
     rbind(o2_a2) |>
     rbind(o2_a3) |>
     rbind(o2_a4) |>
+    # We only consider certified alumni
     filter(Certificación == 1) |>
     # Change the scale to 100 and add an epsilon > 0 if == 0
     mutate(
@@ -1394,7 +1421,11 @@ In this section, we extract general information about the course participants to
       group_by(Gender) |>
       summarize( n = n() )
 
-
+a <- global |>
+  group_by(Gender) |>
+  summarize(
+    percent = n()/nrow(global)*100
+  )
   
 ```
 
